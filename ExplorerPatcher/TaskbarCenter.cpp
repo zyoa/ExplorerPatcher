@@ -59,48 +59,33 @@ HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskb
 							}
 							else if (kk >= 2)
 							{
-								vt.vt = VT_I4;
-								vt.lVal = kk - 1;
-								long x = 0, y = 0, w = 0, h = 0, d = 0;
-								pChild->accLocation(&x, &y, &w, &h, vt);
-								if (bIsTaskbarHorizontal ? (x == -1 || w < EP_TASKBAR_LENGTH_TOO_SMALL) : (y == -1 || h < EP_TASKBAR_LENGTH_TOO_SMALL))
+								// Sum the extent of every distinct button slot instead of measuring from the first
+								// to the last button. When the task list wraps onto a second row/column (e.g. after
+								// many windows open at once), first-to-last only spans the last line, which reports
+								// a length that is too small, keeps the band offset too far and makes the wrap
+								// (and the off-center icons) permanent.
+								long lTotal = 0, lLastX = MINLONG, lLastY = MINLONG;
+								for (long i = 1; i <= kk - 1; ++i)
+								{
+									vt.vt = VT_I4;
+									vt.lVal = i;
+									long x = 0, y = 0, w = 0, h = 0;
+									if (FAILED(pChild->accLocation(&x, &y, &w, &h, vt))) continue;
+									if (w == 0 || h == 0 || (bIsTaskbarHorizontal ? x == -1 : y == -1)) continue;
+									if (x == lLastX && y == lLastY) continue; // grouped windows share one slot
+									lLastX = x;
+									lLastY = y;
+									lTotal += (bIsTaskbarHorizontal ? w : h);
+								}
+								if (lTotal < EP_TASKBAR_LENGTH_TOO_SMALL)
 								{
 									hr = E_FAIL;
 								}
 								else
 								{
-									if (kk >= 3)
+									if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
 									{
-										d = (bIsTaskbarHorizontal ? ((x - rc.left) + w) : ((y - rc.top) + h));
-										vt.vt = VT_I4;
-										vt.lVal = 1;
-										x = 0, y = 0, w = 0, h = 0;
-										pChild->accLocation(&x, &y, &w, &h, vt);
-										if (bIsTaskbarHorizontal ? w == 0 : h == 0)
-										{
-											vt.vt = VT_I4;
-											vt.lVal = 2;
-											x = 0, y = 0, w = 0, h = 0;
-											pChild->accLocation(&x, &y, &w, &h, vt);
-										}
-										if (bIsTaskbarHorizontal ? (x == -1 || w < EP_TASKBAR_LENGTH_TOO_SMALL) : (y == -1 || h < EP_TASKBAR_LENGTH_TOO_SMALL))
-										{
-											hr = E_FAIL;
-										}
-										else
-										{
-											if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
-											{
-												SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (HANDLE)(UINT_PTR)(bIsTaskbarHorizontal ? (d - (x - rc.left)) : (d - (y - rc.top))));
-											}
-										}
-									}
-									else
-									{
-										if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
-										{
-											SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (HANDLE)(UINT_PTR)(bIsTaskbarHorizontal ? w : h));
-										}
+										SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (HANDLE)(UINT_PTR)lTotal);
 									}
 								}
 							}
