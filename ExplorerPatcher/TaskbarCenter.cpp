@@ -64,7 +64,14 @@ HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskb
 								// many windows open at once), first-to-last only spans the last line, which reports
 								// a length that is too small, keeps the band offset too far and makes the wrap
 								// (and the off-center icons) permanent.
-								long lTotal = 0, lLastX = MINLONG, lLastY = MINLONG;
+								// Lines that lie inside the taskbar (a taskbar sized to several rows) are shown
+								// side by side, so only the longest of them counts; lines wrapped outside of it are
+								// added on top, since they need room on the visible line. The task list window itself
+								// grows past the taskbar edge when it wraps, so it can't be used for this check.
+								RECT rcList;
+								GetWindowRect(hWndTaskbar, &rcList);
+								long lVisible = 0, lHidden = 0, lLine = 0, lLineCross = MINLONG, lLastX = MINLONG, lLastY = MINLONG;
+								BOOL bLineVisible = FALSE;
 								for (long i = 1; i <= kk - 1; ++i)
 								{
 									vt.vt = VT_I4;
@@ -75,8 +82,25 @@ HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskb
 									if (x == lLastX && y == lLastY) continue; // grouped windows share one slot
 									lLastX = x;
 									lLastY = y;
-									lTotal += (bIsTaskbarHorizontal ? w : h);
+									long lCross = (bIsTaskbarHorizontal ? y : x);
+									if (lCross != lLineCross)
+									{
+										lLineCross = lCross;
+										lLine = 0;
+										bLineVisible = (bIsTaskbarHorizontal ? (y >= rcList.top && y < rcList.bottom) : (x >= rcList.left && x < rcList.right));
+									}
+									long lExtent = (bIsTaskbarHorizontal ? w : h);
+									lLine += lExtent;
+									if (bLineVisible)
+									{
+										if (lLine > lVisible) lVisible = lLine;
+									}
+									else
+									{
+										lHidden += lExtent;
+									}
 								}
+								long lTotal = lVisible + lHidden;
 								if (lTotal < EP_TASKBAR_LENGTH_TOO_SMALL)
 								{
 									hr = E_FAIL;
