@@ -288,7 +288,15 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 					}
 					if ((res + dwLength + 50 >= (bIsTaskbarHorizontal ? lpRect->right : lpRect->bottom)))
 					{
-						if (TaskbarCenter_ShouldLeftAlignWhenSpaceConstrained(dwSetting) || !bIsTaskbarHorizontal)
+						// On a vertical taskbar, unless the user asked to top-align when space constrained,
+						// shift the buttons up only as far as needed to fit instead of snapping them to the top.
+						long lMinRes = (TaskbarCenter_ShouldStartBeCentered(dwSetting) ? (rcStart.bottom - rcStart.top) : 0);
+						long lClampedRes = lpRect->bottom - dwLength - 50;
+						if (!bIsTaskbarHorizontal && !TaskbarCenter_ShouldLeftAlignWhenSpaceConstrained(dwSetting) && lClampedRes > lMinRes)
+						{
+							res = lClampedRes;
+						}
+						else if (TaskbarCenter_ShouldLeftAlignWhenSpaceConstrained(dwSetting) || !bIsTaskbarHorizontal)
 						{
 							bWasLeftAlignedDueToSpaceConstraints = TRUE;
 							res = 0;
