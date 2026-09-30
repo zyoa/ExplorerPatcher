@@ -64,11 +64,12 @@ HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskb
 								// many windows open at once), first-to-last only spans the last line, which reports
 								// a length that is too small, keeps the band offset too far and makes the wrap
 								// (and the off-center icons) permanent.
-								// Lines that lie inside the task list (a taskbar sized to several rows) are shown
+								// Lines that lie inside the taskbar (a taskbar sized to several rows) are shown
 								// side by side, so only the longest of them counts; lines wrapped outside of it are
-								// added on top, since they need room on the visible line.
+								// added on top, since they need room on the visible line. The task list window itself
+								// grows past the taskbar edge when it wraps, so it can't be used for this check.
 								RECT rcList;
-								GetWindowRect(hWnd, &rcList);
+								GetWindowRect(hWndTaskbar, &rcList);
 								long lVisible = 0, lHidden = 0, lLine = 0, lLineCross = MINLONG, lLastX = MINLONG, lLastY = MINLONG;
 								BOOL bLineVisible = FALSE;
 								for (long i = 1; i <= kk - 1; ++i)
