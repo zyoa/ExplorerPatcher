@@ -3362,6 +3362,8 @@ BOOL twinui_TrackPopupMenuHook(
             }
             IsImmersiveMenu = FALSE;
         }
+        // Win+X can open while another app owns the foreground; without this the menu shows but ignores clicks
+        SetForegroundWindow(hWnd);
         b = TrackPopupMenu(
             hMenu,
             uFlags | TPM_RIGHTBUTTON,
@@ -3371,6 +3373,7 @@ BOOL twinui_TrackPopupMenuHook(
             hWnd,
             prcRect
         );
+        PostMessageW(hWnd, WM_NULL, 0, 0);
         //twinui_TrackPopupMenuElapsed = milliseconds_now();
     }
     return b;
